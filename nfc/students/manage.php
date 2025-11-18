@@ -20,7 +20,7 @@ $students = $stmt->fetchAll();
 ?>
 
 <!-- Page Content (offset for sidebar) -->
-<div class="lg:ml-72 px-4 py-6">
+<div class="flex-1 p-6">
   <div class="max-w-6xl mx-auto">
     <div class="flex items-center justify-between mb-6">
       <h2 class="text-2xl font-semibold">Manage Students</h2>

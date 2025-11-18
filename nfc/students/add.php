@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../db/connection.php';
-// require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
 
 $errors = [];
@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <!-- Page content -->
-<div class="lg:ml-72 px-4 py-6"> <!-- push content to the right of sidebar on large screens -->
+<div class="flex-1 p-6"> <!-- push content to the right of sidebar on large screens -->
   <div class="max-w-3xl mx-auto">
 
     <div class="bg-white rounded-2xl shadow p-6">
@@ -207,6 +207,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
   </div>
-</div>
+              </main>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
