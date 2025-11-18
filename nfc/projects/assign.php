@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../db/connection.php';
 require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/sidebar.php';
 
 $errors = [];
 $success = '';
@@ -19,10 +20,14 @@ if ($projectId <= 0) {
     }
 }
 
-// Fetch students for multi-select (always load so the form can show)
-$students = $pdo->query("SELECT id, roll_no, first_name, last_name FROM students ORDER BY first_name, roll_no")->fetchAll();
+// Fetch students
+$students = $pdo->query("
+    SELECT id, roll_no, first_name, last_name
+    FROM students
+    ORDER BY first_name, roll_no
+")->fetchAll();
 
-// Fetch currently assigned students (if project exists)
+// Current assigned
 $assigned = [];
 if ($project) {
     $rs = $pdo->prepare("SELECT student_id FROM project_students WHERE project_id = ?");
@@ -30,37 +35,37 @@ if ($project) {
     $assigned = array_column($rs->fetchAll(), 'student_id');
 }
 
-// Handle POST: assign students
+// POST Assign
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $project) {
-
     $studentIdsRaw = $_POST['student_ids'] ?? [];
-    // normalize and filter integer ids
     $studentIds = [];
-    foreach ($studentIdsRaw as $sid) {
-        $sid = (int)$sid;
-        if ($sid > 0) $studentIds[] = $sid;
-    }
-    $studentIds = array_values(array_unique($studentIds)); // unique & reindex
+
+    foreach ($studentIdsRaw as $sid)
+        if (($sid = (int)$sid) > 0)
+            $studentIds[] = $sid;
+
+    $studentIds = array_values(array_unique($studentIds));
 
     if (empty($studentIds)) {
-        $errors[] = "No students selected to assign.";
+        $errors[] = "No students selected.";
     } else {
         try {
-            // Verify that the selected student IDs exist in students table
+            // Validate IDs
             $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
-            $checkStmt = $pdo->prepare("SELECT id FROM students WHERE id IN ($placeholders)");
-            $checkStmt->execute($studentIds);
-            $validStudentRows = $checkStmt->fetchAll(PDO::FETCH_COLUMN, 0);
-            $validStudentIds = array_map('intval', $validStudentRows);
+            $check = $pdo->prepare("SELECT id FROM students WHERE id IN ($placeholders)");
+            $check->execute($studentIds);
+            $validIds = array_map('intval', $check->fetchAll(PDO::FETCH_COLUMN, 0));
 
-            // Determine which IDs from the submitted list are valid and not already assigned
-            $toInsert = array_diff($validStudentIds, $assigned);
+            $toInsert = array_diff($validIds, $assigned);
 
             if (empty($toInsert)) {
-                $success = "No new students to assign (either invalid or already assigned).";
+                $success = "No new students to assign.";
             } else {
-                // Prepare insert statement
-                $ins = $pdo->prepare("INSERT IGNORE INTO project_students (project_id, student_id, role, assigned_at) VALUES (?, ?, NULL, NOW())");
+                $ins = $pdo->prepare("
+                    INSERT IGNORE INTO project_students
+                    (project_id, student_id, role, assigned_at)
+                    VALUES (?, ?, NULL, NOW())
+                ");
 
                 $pdo->beginTransaction();
                 foreach ($toInsert as $sid) {
@@ -68,10 +73,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $project) {
                 }
                 $pdo->commit();
 
-                $success = "Assigned " . count($toInsert) . " student(s) to the project.";
+                $success = "Assigned " . count($toInsert) . " student(s).";
             }
 
-            // refresh assigned list
+            // Refresh assigned list
             $rs->execute([$projectId]);
             $assigned = array_column($rs->fetchAll(), 'student_id');
 
@@ -83,36 +88,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $project) {
 }
 ?>
 
-<h2>Assign Students to Project</h2>
+<main class="flex-1 p-6">
+  <div class="max-w-3xl mx-auto">
 
-<?php if (!empty($errors)): ?>
-    <div style="color:#b00020;margin-bottom:10px">
-        <?php foreach ($errors as $er) echo htmlspecialchars($er) . "<br>"; ?>
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="text-2xl font-semibold">Assign Students</h2>
+        <p class="text-sm text-gray-500">Attach multiple students to this project</p>
+      </div>
+      <a href="manage.php" class="px-4 py-2 border rounded-lg hover:bg-gray-50">Back</a>
     </div>
-<?php endif; ?>
 
-<?php if ($success): ?>
-    <div style="color:green;margin-bottom:10px"><?= htmlspecialchars($success) ?></div>
-<?php endif; ?>
+    <?php if (!empty($errors)): ?>
+      <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-800 rounded-lg">
+        <?php foreach ($errors as $er): ?>
+          <div><?= htmlspecialchars($er) ?></div>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
 
-<?php if (!empty($project)): ?>
-    <h3><?= htmlspecialchars($project['name']) ?></h3>
+    <?php if ($success): ?>
+      <div class="mb-4 p-3 bg-green-50 border border-green-200 text-green-800 rounded-lg">
+        <?= htmlspecialchars($success) ?>
+      </div>
+    <?php endif; ?>
 
-    <form method="post">
-        <label>Select Students</label><br>
-        <select name="student_ids[]" multiple style="width:100%;height:140px">
-            <?php foreach ($students as $s): 
-                $isSelected = in_array($s['id'], $assigned) ? 'selected' : '';
-            ?>
-                <option value="<?= (int)$s['id'] ?>" <?= $isSelected ?>>
-                    <?= htmlspecialchars($s['roll_no'].' - '.$s['first_name'].' '.$s['last_name']) ?>
-                </option>
+    <?php if ($project): ?>
+    <div class="bg-white p-6 rounded-2xl shadow">
+
+      <h3 class="text-xl font-medium mb-4 text-gray-700">
+        Project: <?= htmlspecialchars($project['name']) ?>
+      </h3>
+
+      <form method="post" class="space-y-6">
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Select Students</label>
+
+          <select name="student_ids[]" multiple
+            class="w-full h-56 border border-gray-200 rounded-lg p-2 shadow-sm focus:ring-violet-300 focus:border-violet-400">
+            <?php foreach ($students as $s): ?>
+              <option value="<?= $s['id'] ?>"
+                <?= in_array($s['id'], $assigned) ? 'selected' : '' ?>>
+                <?= htmlspecialchars($s['roll_no']." - ".$s['first_name']." ".$s['last_name']) ?>
+              </option>
             <?php endforeach; ?>
-        </select><br><br>
+          </select>
 
-        <button class="btn" type="submit">Assign Selected</button>
-        <a class="btn" href="manage.php" style="background:#666;margin-left:8px">Back</a>
-    </form>
-<?php endif; ?>
+          <p class="text-xs text-gray-400 mt-1">Hold Ctrl / Command to select multiple.</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button type="submit"
+            class="bg-violet-600 text-white px-4 py-2 rounded-lg shadow hover:bg-violet-700">
+            Assign Selected
+          </button>
+
+          <a href="manage.php" class="px-4 py-2 border rounded-lg hover:bg-gray-50">Back</a>
+        </div>
+
+      </form>
+    </div>
+    <?php endif; ?>
+
+  </div>
+</main>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
