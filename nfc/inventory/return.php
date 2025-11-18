@@ -1,7 +1,8 @@
 <?php
-// inventory/return.php
+// inventory/return.php (styled)
 require_once __DIR__ . '/../db/connection.php';
 require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/sidebar.php';
 
 $errors = [];
 $success = '';
@@ -67,26 +68,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<h2>Return Borrowed Item</h2>
-
-<?php if ($success): ?>
-    <div style="color:green;margin-bottom:12px;"><?=htmlspecialchars($success)?></div>
-<?php endif; ?>
-
-<?php if ($errors): ?>
-    <div style="color:#b00020;margin-bottom:12px;">
-        <?php foreach ($errors as $err) echo htmlspecialchars($err) . "<br>"; ?>
+<!-- Page Content (offset for sidebar) -->
+<div class="flex-1 p-6">
+  <div class="max-w-4xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="text-2xl font-semibold">Return Borrowed Item</h2>
+        <p class="text-sm text-gray-500">Mark borrowed items as returned and restore inventory availability.</p>
+      </div>
+      <div>
+        <a href="manage.php" class="inline-flex items-center gap-2 border px-3 py-2 rounded-md hover:bg-gray-50">Back to Inventory</a>
+      </div>
     </div>
-<?php endif; ?>
 
-<?php if (empty($borrowedRows)): ?>
-    <div>No borrowed items found. <a href="/nfc/inventory/manage.php">Back to Inventory</a></div>
-<?php else: ?>
-    <form method="post" style="max-width:720px">
-        <label>Select Borrow Record to Return</label><br>
-        <select name="borrow_id" required>
-            <option value="">-- select --</option>
-            <?php foreach ($borrowedRows as $br): 
+    <?php if ($success): ?>
+      <div class="mb-4 p-3 rounded-md bg-green-50 border border-green-200 text-green-800">
+        <?= htmlspecialchars($success) ?>
+      </div>
+    <?php endif; ?>
+
+    <?php if (!empty($errors)): ?>
+      <div class="mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-red-800">
+        <strong class="block font-medium">Errors</strong>
+        <ul class="mt-2 list-disc ml-5 text-sm">
+          <?php foreach ($errors as $err): ?>
+            <li><?= htmlspecialchars($err) ?></li>
+          <?php endforeach; ?>
+        </ul>
+      </div>
+    <?php endif; ?>
+
+    <?php if (empty($borrowedRows)): ?>
+      <div class="bg-white rounded-2xl shadow p-6 text-center text-gray-600">
+        <p class="mb-3">No borrowed items found.</p>
+        <a href="manage.php" class="inline-flex items-center gap-2 border px-3 py-2 rounded-md hover:bg-gray-50">Back to Inventory</a>
+      </div>
+    <?php else: ?>
+      <div class="bg-white rounded-2xl shadow p-6">
+        <form method="post" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Select Borrow Record to Return</label>
+            <select name="borrow_id" required
+                    class="mt-1 block w-full p-2 rounded-md border-gray-300 shadow-sm focus:ring-violet-300 focus:border-violet-400">
+              <option value="">-- select --</option>
+              <?php foreach ($borrowedRows as $br):
                 $label = sprintf(
                     "%s | %s - %s (Borrowed: %s%s)",
                     $br['borrow_id'],
@@ -96,36 +121,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     !empty($br['due_date']) ? " | Due: ".htmlspecialchars($br['due_date']) : ''
                 );
                 $sel = ($preselectBorrow && $preselectBorrow == $br['borrow_id']) ? ' selected' : '';
-            ?>
+              ?>
                 <option value="<?= (int)$br['borrow_id'] ?>"<?= $sel ?>>
-                    <?= htmlspecialchars($label) ?>
+                  <?= htmlspecialchars($label) ?>
                 </option>
-            <?php endforeach; ?>
-        </select>
-        <br><br>
+              <?php endforeach; ?>
+            </select>
+          </div>
 
-        <button type="submit" class="btn">Mark as Returned</button>
-        <a class="btn" href="manage.php" style="background:#666;margin-left:8px">Back to Inventory</a>
-    </form>
+          <div class="flex items-center gap-3">
+            <button type="submit" class="inline-flex items-center gap-2 bg-violet-600 text-white px-4 py-2 rounded-lg shadow hover:bg-violet-700">
+              Mark as Returned
+            </button>
+            <a href="manage.php" class="ml-3 inline-flex items-center px-4 py-2 border rounded-lg text-sm">Cancel</a>
+          </div>
+        </form>
+      </div>
 
-    <h3 style="margin-top:24px">Currently Borrowed</h3>
-    <table>
-        <thead>
-            <tr><th>ID</th><th>Item</th><th>Student</th><th>Borrowed On</th><th>Due Date</th><th>Notes</th></tr>
-        </thead>
-        <tbody>
+      <h3 class="mt-6 mb-3 text-lg font-semibold">Currently Borrowed</h3>
+
+      <div class="overflow-x-auto bg-white rounded-lg shadow">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Borrowed On</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
+            </tr>
+          </thead>
+
+          <tbody class="bg-white divide-y divide-gray-100">
             <?php foreach ($borrowedRows as $br): ?>
-                <tr>
-                    <td><?= (int)$br['borrow_id'] ?></td>
-                    <td><?= htmlspecialchars($br['item_name'].' ('.$br['sku'].')') ?></td>
-                    <td><?= htmlspecialchars($br['roll_no'].' - '.$br['first_name'].' '.$br['last_name']) ?></td>
-                    <td><?= htmlspecialchars(date('Y-m-d', strtotime($br['borrow_date']))) ?></td>
-                    <td><?= htmlspecialchars($br['due_date'] ?? '-') ?></td>
-                    <td><?= nl2br(htmlspecialchars($br['notes'] ?? '')) ?></td>
-                </tr>
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-sm text-gray-700"><?= (int)$br['borrow_id'] ?></td>
+                <td class="px-4 py-3 text-sm text-gray-800"><?= htmlspecialchars($br['item_name'].' ('.$br['sku'].')') ?></td>
+                <td class="px-4 py-3 text-sm text-gray-700"><?= htmlspecialchars($br['roll_no'].' - '.$br['first_name'].' '.$br['last_name']) ?></td>
+                <td class="px-4 py-3 text-sm text-gray-700"><?= htmlspecialchars(date('Y-m-d', strtotime($br['borrow_date']))) ?></td>
+                <td class="px-4 py-3 text-sm text-gray-700"><?= htmlspecialchars($br['due_date'] ?? '-') ?></td>
+                <td class="px-4 py-3 text-sm text-gray-600"><?= nl2br(htmlspecialchars($br['notes'] ?? '')) ?></td>
+              </tr>
             <?php endforeach; ?>
-        </tbody>
-    </table>
-<?php endif; ?>
+          </tbody>
+        </table>
+      </div>
+    <?php endif; ?>
+  </div>
+</div>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
